@@ -1,0 +1,54 @@
+#!/bin/bash
+#######################################################################
+
+### Parametros de dibujo
+gmtset COLOR_NAN 150/150/150 DOTS_PR_INCH 300 \
+ANNOT_FONT_SIZE_PRIMARY 14 ANNOT_FONT_SIZE_SECONDARY 14 \
+LABEL_FONT Times-Roman LABEL_FONT_SIZE 14 HEADER_FONT_SIZE 14 \
+HEADER_FONT Times-Roman ANNOT_FONT_PRIMARY Times-Roman \
+PS_COLOR CMYK PAPER_MEDIA a4+ MEASURE_UNIT cm \
+X_ORIGIN 3c Y_ORIGIN 2c BASEMAP_AXES WeSn \
+PLOT_DEGREE_FORMAT DF BASEMAP_TYPE plain
+
+#Nombre fichero de salida
+psfile=EWdisplacements.ps
+rango=-R29.5/31/40.35/41.15
+
+#Variable de datos comun (Llamar datos colocados en otro directorio)
+dem_bati="Mosaic39_42_27_35.grd"
+
+#Variable para simplificar las lineas de ordenes de dibujo
+inicial="-JM24 $rango -B0.5/0.25eWSn -K"
+medio="-JM24 $rango -B0.5/0.25eWSn -O -K"
+final="-JM24 $rango -B0.5/0.25eWSn -O"
+
+##########################################################
+#Prepara los datos de batimetria
+##########################################################
+grdsample $dem_bati $rango -I3c -Gbathy.grd
+#grdsample $dem_bati $rango -I0.05m -Gbathy.grd    
+#makecpt -Ctopografia -T-9000/5000/25 > color.cpt # otra paleta de color
+makecpt -Cgray -T-6000/6000/25 > color.cpt # otra paleta de color
+
+makecpt -Chot -T-6/6/0.1 > colors.cpt
+#makecpt -Cjet -T-6/6/0.1 > colors.cpt 
+
+grdgradient bathy.grd -A45 -Nt -Gshading.grd # calculo del sombreado
+#grdgradient $dem_bati -A345 -Nt -Gshading.grd # calculo del sombreado
+
+##########################################################
+#Comienza a dibujar
+##########################################################
+psbasemap $inicial -Y2 > $psfile 
+grdimage bathy.grd $medio -Ishading.grd -Ccolor.cpt >> $psfile
+#grdimage $dem_bati  $medio -Ishading.grd -Ccolors.cpt >> $psfile
+
+grdimage $medio Adapazari.grd -Ccolors.cpt -Q >> $psfile
+grdimage $medio Izmit.grd -Ccolors.cpt -Q >> $psfile           
+
+# Anadimos al dibujo una linea de costa que resalte en negro
+pscoast $medio -S255/255/255 -Df -W0.75p/0/0/0 -Lx21.5/16.5/0/25k >> $psfile
+psscale -D2.5c/1c/6c/0.5c -Ccolors.cpt -B5/:m: -X1 -O >> $psfile  
+
+rm bathy.grd
+rm shading.grd
